@@ -8,4 +8,13 @@
   password: <%= @database[:password] %>
   reconnect: <%= @database[:reconnect] ? 'true' : 'false' %>
 
+<%= 'dw_' + env %>:
+  adapter: <%= @database[:adapter] %>
+  database: <%= @database[:database] + '_dw' %>
+  encoding: utf8
+  host: <%= @database[:host] || 'localhost' %>
+  username: <%= @database[:username] %>
+  password: <%= @database[:password] %>
+  reconnect: <%= @database[:reconnect] ? 'true' : 'false' %>
+
 <% end -%>
