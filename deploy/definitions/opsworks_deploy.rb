@@ -13,16 +13,20 @@ define :opsworks_deploy do
   if deploy[:scm]
     ensure_scm_package_installed(deploy[:scm][:scm_type])
 
-    prepare_git_checkouts(:user => deploy[:user],
-                          :group => deploy[:group],
-                          :home => deploy[:home],
-                          :ssh_key => deploy[:scm][:ssh_key]) if deploy[:scm][:scm_type].to_s == 'git'
+    prepare_git_checkouts(
+      :user => deploy[:user],
+      :group => deploy[:group],
+      :home => deploy[:home],
+      :ssh_key => deploy[:scm][:ssh_key]
+    ) if deploy[:scm][:scm_type].to_s == 'git'
 
-    prepare_svn_checkouts(:user => deploy[:user],
-                          :group => deploy[:group],
-                          :home => deploy[:home],
-                          :deploy => deploy,
-                          :application => application) if deploy[:scm][:scm_type].to_s == 'svn'
+    prepare_svn_checkouts(
+      :user => deploy[:user],
+      :group => deploy[:group],
+      :home => deploy[:home],
+      :deploy => deploy,
+      :application => application
+    ) if deploy[:scm][:scm_type].to_s == 'svn'
 
     if deploy[:scm][:scm_type].to_s == 'archive'
       repository = prepare_archive_checkouts(deploy[:scm])
@@ -65,7 +69,7 @@ define :opsworks_deploy do
       migrate deploy[:migrate]
       migration_command deploy[:migrate_command]
       environment deploy[:environment]
-      symlink_before_migrate deploy[:symlink_before_migrate]
+      symlink_before_migrate( deploy[:symlink_before_migrate] )
       action deploy[:action]
 
       if deploy[:application_type] == 'rails'
@@ -88,20 +92,30 @@ define :opsworks_deploy do
       end
 
       before_migrate do
-        run_symlinks_before_migrate
+        link_tempfiles_to_current_release
+
         if deploy[:application_type] == 'rails'
           if deploy[:auto_bundle_on_deploy]
             OpsWorks::RailsConfiguration.bundle(application, node[:deploy][application], release_path)
           end
 
-          node[:deploy][application][:database][:adapter] = OpsWorks::RailsConfiguration.determine_database_adapter(application, node[:deploy][application], release_path, :force => node[:force_database_adapter_detection], :consult_gemfile => node[:deploy][application][:auto_bundle_on_deploy])
+          node[:deploy][application][:database][:adapter] = OpsWorks::RailsConfiguration.determine_database_adapter(
+            application,
+            node[:deploy][application],
+            release_path,
+            :force => node[:force_database_adapter_detection],
+            :consult_gemfile => node[:deploy][application][:auto_bundle_on_deploy]
+          )
           template "#{node[:deploy][application][:deploy_to]}/shared/config/database.yml" do
             cookbook "rails"
             source "database.yml.erb"
             mode "0660"
             owner node[:deploy][application][:user]
             group node[:deploy][application][:group]
-            variables(:database => node[:deploy][application][:database], :environment => node[:deploy][application][:rails_env])
+            variables(
+              :database => node[:deploy][application][:database],
+              :environment => node[:deploy][application][:rails_env]
+            )
           end.run_action(:create)
         elsif deploy[:application_type] == 'php'
           template "#{node[:deploy][application][:deploy_to]}/shared/config/opsworks.php" do
@@ -110,7 +124,11 @@ define :opsworks_deploy do
             mode '0660'
             owner node[:deploy][application][:user]
             group node[:deploy][application][:group]
-            variables(:database => node[:deploy][application][:database], :memcached => node[:deploy][application][:memcached], :layers => node[:opsworks][:layers])
+            variables(
+              :database => node[:deploy][application][:database],
+              :memcached => node[:deploy][application][:memcached],
+              :layers => node[:opsworks][:layers]
+            )
             only_if do
               File.exists?("#{node[:deploy][application][:deploy_to]}/shared/config")
             end
